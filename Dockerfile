@@ -1,8 +1,7 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 # Install necessary packages for iSCSI support
 RUN apt-get update && apt-get install -y \
-    open-iscsi \
     util-linux \
     e2fsprogs \
     xfsprogs \
