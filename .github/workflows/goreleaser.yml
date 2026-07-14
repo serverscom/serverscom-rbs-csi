@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.24"
+          go-version: "1.26"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
       - name: Setup Docker Buildx
@@ -37,7 +37,7 @@ jobs:
           echo "IMAGE_REPO=ghcr.io/${OWNER}/rbs-csi-driver" >> "$GITHUB_ENV"
       - name: Run GoReleaser for tag
         if: "startsWith(github.ref, 'refs/tags/')"
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: latest
           args: release --clean
@@ -53,7 +53,7 @@ jobs:
     needs: goreleaser
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: azure/setup-kubectl@v4
 
@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
