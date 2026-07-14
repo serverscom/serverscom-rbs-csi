@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rbs-csi-iscsiadm-wrapper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rbs-csi.labels" . | nindent 4 }}
+data:
+  iscsiadm: |
+    #!/bin/sh
+    set -eu
+
+    for iscsiadm_path in \
+      /sbin/iscsiadm \
+      /usr/sbin/iscsiadm \
+      /usr/local/sbin/iscsiadm \
+      /bin/iscsiadm \
+      /usr/local/bin/iscsiadm
+    do
+      if [ -x "/host${iscsiadm_path}" ]; then
+        exec chroot /host "${iscsiadm_path}" "$@"
+      fi
+    done
+
+    echo "host iscsiadm executable was not found" >&2
+    exit 127

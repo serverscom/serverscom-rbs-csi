@@ -41,6 +41,7 @@ clean() {
   echo
   for file in \
     "$SRC/rbac.yaml" \
+    "$SRC/iscsiadm-wrapper-configmap.yaml" \
     "$SRC/node-daemonset.yaml" \
     "$SRC/controller.yaml" \
     "$SRC/csi-driver.yaml"
