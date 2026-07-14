@@ -49,8 +49,7 @@ func (s *rbsService) UpdateVolume(ctx context.Context, id string, req serverscom
 }
 
 func (s *rbsService) DeleteVolume(ctx context.Context, id string) error {
-	_, err := s.client.RemoteBlockStorageVolumes.Delete(ctx, id)
-	return err
+	return s.client.RemoteBlockStorageVolumes.Delete(ctx, id)
 }
 
 func (s *rbsService) GetVolumeCredentials(ctx context.Context, id string) (*serverscom.RemoteBlockStorageVolumeCredentials, error) {
