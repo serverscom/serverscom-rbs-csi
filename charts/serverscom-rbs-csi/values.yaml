@@ -11,6 +11,14 @@ commonLabels: {}
 imagePullSecrets: []
 
 controller:
+  replicaCount: 1
+  priorityClassName: ""
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  podAntiAffinity: true
   tolerations:
     - key: CriticalAddonsOnly
       operator: Exists
@@ -30,16 +38,43 @@ controller:
     image:
       repository: registry.k8s.io/sig-storage/csi-provisioner
       tag: v5.3.0
+    resources:
+      limits:
+        memory: 128Mi
+        cpu: 200m
+      requests:
+        memory: 50Mi
+        cpu: 25m
   attacher:
     image:
       repository: registry.k8s.io/sig-storage/csi-attacher
       tag: v4.10.0
+    resources:
+      limits:
+        memory: 128Mi
+        cpu: 200m
+      requests:
+        memory: 50Mi
+        cpu: 25m
   resizer:
     image:
       repository: registry.k8s.io/sig-storage/csi-resizer
       tag: v2.0.0
+    resources:
+      limits:
+        memory: 128Mi
+        cpu: 200m
+      requests:
+        memory: 50Mi
+        cpu: 25m
 
 node:
+  priorityClassName: ""
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
   tolerations:
     - operator: Exists
   driver:
