@@ -7,7 +7,9 @@ metadata:
     app: rbs-csi-controller
     {{- include "rbs-csi.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.controller.replicaCount }}
+  strategy:
+    {{- toYaml .Values.controller.updateStrategy | nindent 4 }}
   selector:
     matchLabels:
       app: rbs-csi-controller
@@ -20,6 +22,20 @@ spec:
         {{- include "rbs-csi.labels" . | nindent 8 }}
     spec:
       serviceAccountName: rbs-csi-controller-sa
+      {{- with .Values.controller.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- if .Values.controller.podAntiAffinity }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: rbs-csi-controller
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       {{- with .Values.imagePullSecrets }}
@@ -74,6 +90,7 @@ spec:
             - "--csi-address=$(ADDRESS)"
             - "--v=2"
             - "--leader-election"
+            - "--handle-volume-inuse-error=false"
           env:
             - name: ADDRESS
               value: /var/lib/csi/sockets/pluginproxy/csi.sock
@@ -116,3 +133,18 @@ spec:
       volumes:
         - name: socket-dir
           emptyDir: {}
+{{- if gt (int .Values.controller.replicaCount) 1 }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rbs-csi-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "rbs-csi.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: rbs-csi-controller
+{{- end }}

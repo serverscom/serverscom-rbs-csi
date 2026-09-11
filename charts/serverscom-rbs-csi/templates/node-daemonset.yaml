@@ -7,6 +7,8 @@ metadata:
     app: rbs-csi-node
     {{- include "rbs-csi.labels" . | nindent 4 }}
 spec:
+  updateStrategy:
+    {{- toYaml .Values.node.updateStrategy | nindent 4 }}
   selector:
     matchLabels:
       app: rbs-csi-node
@@ -19,6 +21,9 @@ spec:
         checksum/iscsiadm-wrapper: {{ include (print $.Template.BasePath "/iscsiadm-wrapper-configmap.yaml") . | sha256sum }}
     spec:
       serviceAccountName: rbs-csi-node-sa
+      {{- with .Values.node.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       {{- with .Values.imagePullSecrets }}
