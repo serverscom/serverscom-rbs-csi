@@ -22,33 +22,58 @@ import (
 // NodeService implements the CSI Node service
 type NodeService struct {
 	csi.UnimplementedNodeServer
-	nodeID       string
-	iscsiManager iscsi.ISCSIManager
-	mountManager mount.MountManager
-	stagingMu    sync.Map // map[volumeID → *sync.Mutex], serializes concurrent stage calls per volume
+	nodeID            string
+	iscsiManager      iscsi.ISCSIManager
+	mountManager      mount.MountManager
+	stagingMu         sync.Mutex
+	stagingOperations map[string]struct{}
 }
 
 // NewNodeService creates a new node service
 func NewNodeService(nodeID string) *NodeService {
 	return &NodeService{
-		nodeID:       nodeID,
-		iscsiManager: iscsi.NewManager(),
-		mountManager: mount.NewManager(),
+		nodeID:            nodeID,
+		iscsiManager:      iscsi.NewManager(),
+		mountManager:      mount.NewManager(),
+		stagingOperations: make(map[string]struct{}),
 	}
+}
+
+// tryBeginStage records an active stage operation. Kubelet can retry while a
+// format is still running; retaining each retry until it gets the mutex grows
+// the node driver's memory use. Aborted makes kubelet retry after completion.
+func (s *NodeService) tryBeginStage(volumeID string) bool {
+	s.stagingMu.Lock()
+	defer s.stagingMu.Unlock()
+
+	if s.stagingOperations == nil {
+		s.stagingOperations = make(map[string]struct{})
+	}
+	if _, exists := s.stagingOperations[volumeID]; exists {
+		return false
+	}
+	s.stagingOperations[volumeID] = struct{}{}
+	return true
+}
+
+func (s *NodeService) endStage(volumeID string) {
+	s.stagingMu.Lock()
+	defer s.stagingMu.Unlock()
+	delete(s.stagingOperations, volumeID)
 }
 
 // NodeStageVolume stages a volume to the staging path
 func (s *NodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
 	klog.V(2).InfoS("NodeStageVolume called", "volume_id", req.GetVolumeId())
 
-	// Serialize concurrent staging calls for the same volume. Kubelet may retry
-	// NodeStageVolume while a previous call is still formatting the disk (mkfs can
-	// take minutes). Without this lock the second call races FormatAndMountDevice
-	// and hits "already mounted" once the first call finishes.
-	mu, _ := s.stagingMu.LoadOrStore(req.GetVolumeId(), &sync.Mutex{})
-	lock := mu.(*sync.Mutex)
-	lock.Lock()
-	defer lock.Unlock()
+	volumeID := req.GetVolumeId()
+	if volumeID == "" {
+		return nil, status.Error(codes.InvalidArgument, "volume ID is required")
+	}
+	if !s.tryBeginStage(volumeID) {
+		return nil, status.Errorf(codes.Aborted, "stage operation is already in progress for volume %s", volumeID)
+	}
+	defer s.endStage(volumeID)
 
 	// Extract iSCSI connection information from publish context
 	publishContext := req.GetPublishContext()
