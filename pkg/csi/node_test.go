@@ -29,6 +29,16 @@ func newTestNode(ctrl *gomock.Controller) (*NodeService, *mocks.MockISCSIManager
 	}, miscsi, mmount
 }
 
+func TestNodeService_StageOperationIsReleased(t *testing.T) {
+	g := NewGomegaWithT(t)
+	svc := &NodeService{}
+
+	g.Expect(svc.tryBeginStage("vol-1")).To(BeTrue())
+	g.Expect(svc.tryBeginStage("vol-1")).To(BeFalse())
+	svc.endStage("vol-1")
+	g.Expect(svc.tryBeginStage("vol-1")).To(BeTrue())
+}
+
 func TestNodeStageVolume_Success(t *testing.T) {
 	g := NewGomegaWithT(t)
 	ctrl := gomock.NewController(t)
